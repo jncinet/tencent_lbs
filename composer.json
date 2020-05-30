@@ -1,0 +1,32 @@
+{
+    "name": "jncinet/tencent_lbs",
+    "description": "tencent lbs service.",
+    "keywords": [
+        "laravel",
+        "qihucms",
+        "lbs"
+    ],
+    "homepage": "https://www.qihucms.com",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "zhangye",
+            "email": "y@qilephp.com"
+        }
+    ],
+    "require": {
+        "guzzlehttp/guzzle": "^6.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Qihucms\\TencentLbs\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Qihucms\\TencentLbs\\TencentLbsServiceProvider"
+            ]
+        }
+    }
+}
