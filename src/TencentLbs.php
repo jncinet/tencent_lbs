@@ -4,6 +4,7 @@ namespace Qihucms\TencentLbs;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Arr;
 
 class TencentLbs
 {
@@ -12,15 +13,24 @@ class TencentLbs
      *
      * @param string $path 请求路径
      * @param array $query 请求参数
+     * @param string $method 请求参数
      * @return array
      */
-    protected function formatQueryString($path, $query)
+    protected function formatQueryString($path, $query, $method)
     {
         $query = array_merge(['key' => Cache::get('config_map_tencent_lbs_key', '')], $query);
-        sort($query);
+        if ($method !== 'GET' && is_array($query['data'])) {
+            $query['data'] = json_encode($query['data']);
+            $query['data'] = '[' . $query['data'] . ']';
+        }
+        $query = Arr::sortRecursive($query);
 
-        $sign = md5($path . '?' . http_build_query($query) . Cache::get('config_map_tencent_lbs_sk', ''));
-        return array_merge(['sig' => $sign], $query);
+        if (Cache::get('config_map_tencent_lbs_sk', '')) {
+            $sign = md5($path . '?' . Arr::query($query) . Cache::get('config_map_tencent_lbs_sk', ''));
+            $query = array_merge(['sig' => $sign], $query);
+        }
+
+        return $query;
     }
 
     /**
@@ -34,17 +44,19 @@ class TencentLbs
      */
     protected function request($path = '', $query = [], $method = 'GET')
     {
-        $query = $this->formatQueryString($path, $query);
+        $client = new Client(['base_uri' => 'https://apis.map.qq.com', 'timeout' => 2.0, 'verify' => false]);
 
+        $queryString = $this->formatQueryString($path, $query, $method);
         if ($method === 'GET') {
-            $query = ['query' => $query];
+            $query = ['query' => $queryString];
         } else {
-            $query = ['body' => $query];
+            $path .= '?sig=' . $queryString['sig'];
+            unset($queryString['sig']);
+            $queryString['data'] = $query['data'];
+            $query = ['json' => $queryString];
         }
 
-        $client = new Client(['base_uri' => 'https://apis.map.qq.com', 'verify' => false]);
         $response = $client->request($method, $path, $query);
-
         return json_decode((string)$response->getBody(), true);
     }
 
@@ -57,7 +69,28 @@ class TencentLbs
      */
     public function ipLocation($ip)
     {
-        return $this->request('/ws/location/v1/ip', ['ip' => $ip]);
+        if (false !== filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return $this->request('/ws/location/v1/ip', ['ip' => $ip]);
+        } else {
+            return [
+                'status' => 0,
+                'message' => '局域网IP',
+                'result' => [
+                    'ip' => $ip,
+                    'location' => [
+                        "lng" => 0,
+                        "lat" => 0
+                    ],
+                    'ad_info' => [
+                        'nation' => '中国',
+                        'province' => '本地',
+                        'city' => '局域网',
+                        'district' => '',
+                        'adcode' => 000000
+                    ]
+                ]
+            ];
+        }
     }
 
     /**
