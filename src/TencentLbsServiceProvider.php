@@ -13,8 +13,8 @@ class TencentLbsServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton(Lbs::class, function () {
-            return new Lbs();
+        $this->app->singleton(TencentLbs::class, function () {
+            return new TencentLbs();
         });
     }
 
@@ -25,6 +25,8 @@ class TencentLbsServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        $this->publishes([
+            __DIR__ . '/../config/qihu_lbs.php' => config_path('qihu_lbs.php'),
+        ], 'tencent-lbs');
     }
 }

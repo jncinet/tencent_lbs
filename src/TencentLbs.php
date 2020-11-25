@@ -26,7 +26,7 @@ class TencentLbs
         $query = Arr::sortRecursive($query);
 
         if (Cache::get('config_map_tencent_lbs_sk', '')) {
-            $sign = md5($path . '?' . Arr::query($query) . Cache::get('config_map_tencent_lbs_sk', ''));
+            $sign = md5($path . '?' . urldecode(Arr::query($query)) . Cache::get('config_map_tencent_lbs_sk', ''));
             $query = array_merge(['sig' => $sign], $query);
         }
 
