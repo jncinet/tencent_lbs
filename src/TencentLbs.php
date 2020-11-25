@@ -3,7 +3,6 @@
 namespace Qihucms\TencentLbs;
 
 use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Arr;
 
 class TencentLbs
@@ -18,15 +17,15 @@ class TencentLbs
      */
     protected function formatQueryString($path, $query, $method)
     {
-        $query = array_merge(['key' => Cache::get('config_map_tencent_lbs_key', '')], $query);
+        $query = array_merge(['key' => config('tencent_lbs_key')], $query);
         if ($method !== 'GET' && is_array($query['data'])) {
             $query['data'] = json_encode($query['data']);
             $query['data'] = '[' . $query['data'] . ']';
         }
         $query = Arr::sortRecursive($query);
 
-        if (Cache::get('config_map_tencent_lbs_sk', '')) {
-            $sign = md5($path . '?' . urldecode(Arr::query($query)) . Cache::get('config_map_tencent_lbs_sk', ''));
+        if (config('tencent_lbs_sk')) {
+            $sign = md5($path . '?' . urldecode(Arr::query($query)) . config('tencent_lbs_sk'));
             $query = array_merge(['sig' => $sign], $query);
         }
 
