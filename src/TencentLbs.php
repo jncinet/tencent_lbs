@@ -43,7 +43,7 @@ class TencentLbs
      */
     protected function request($path = '', $query = [], $method = 'GET')
     {
-        $client = new Client(['base_uri' => 'https://apis.map.qq.com', 'timeout' => 2.0, 'verify' => false]);
+        $client = new Client(['base_uri' => 'https://apis.map.qq.com', 'timeout' => 30.0, 'verify' => false]);
 
         $queryString = $this->formatQueryString($path, $query, $method);
         if ($method === 'GET') {
@@ -69,27 +69,36 @@ class TencentLbs
     public function ipLocation($ip)
     {
         if (false !== filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            return $this->request('/ws/location/v1/ip', ['ip' => $ip]);
-        } else {
-            return [
-                'status' => 0,
-                'message' => '局域网IP',
-                'result' => [
-                    'ip' => $ip,
-                    'location' => [
-                        "lng" => 0,
-                        "lat" => 0
-                    ],
-                    'ad_info' => [
-                        'nation' => '中国',
-                        'province' => '本地',
-                        'city' => '局域网',
-                        'district' => '',
-                        'adcode' => 000000
-                    ]
-                ]
-            ];
+            $result = $this->request('/ws/location/v1/ip', ['ip' => $ip]);
+            if ($result['status'] == 0) {
+                // 国外IP时，详细信息无法通过IP获取到，根据返回的GPS信息，重新获取
+                if ($result['result']['ad_info']['adcode'] < 1) {
+                    $gpsData = $this->gpsLocation($result['result']['location']['lat'], $result['result']['location']['lng']);
+                    $result['result']['ad_info']['province'] = $gpsData['result']['address_component']['ad_level_1'];
+                    $result['result']['ad_info']['city'] = $gpsData['result']['address_component']['ad_level_2'];
+                    $result['result']['ad_info']['district'] = $gpsData['result']['address_component']['ad_level_3'];
+                }
+                return $result;
+            }
         }
+        return [
+            'status' => 0,
+            'message' => '局域网IP',
+            'result' => [
+                'ip' => $ip,
+                'location' => [
+                    "lng" => 0,
+                    "lat" => 0
+                ],
+                'ad_info' => [
+                    'nation' => '中国',
+                    'province' => '本地',
+                    'city' => '局域网',
+                    'district' => '',
+                    'adcode' => '000000'
+                ]
+            ]
+        ];
     }
 
     /**
